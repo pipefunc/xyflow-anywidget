@@ -146,7 +146,6 @@ class Node:
     # Any extra/unknown props
     extra: dict[str, Any] = field(default_factory=dict)
 
-    # Serialization helpers
     def to_dict(self) -> dict[str, Any]:
         """Convert Node to dictionary format for xyflow."""
         node = _dataclass_to_dict(self, exclude=("extra",))

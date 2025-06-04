@@ -17,33 +17,47 @@ function render({ model, el }) {
     const height = model.get("height") || "400px";
     const width = model.get("width") || "100%";
 
-    // Handle node click events
-    const onNodeClick = (event, node) => {
-      // Send the clicked node data back to Python
-      model.set("last_clicked_node", {
-        id: node.id,
-        data: node.data,
-        position: node.position,
-        timestamp: Date.now(),
-        event_type: "node_click"
-      });
-      model.save_changes();
+    const eventFactory = (event_type, attribute) => {
+      return (event, node) => {
+        model.set(attribute, {
+          id: node.id,
+          data: node.data,
+          position: node.position,
+          timestamp: Date.now(),
+          event_type: event_type,
+        });
+        model.save_changes();
+      };
     };
 
+    // Handle node click events
+    const onNodeClick = eventFactory("node_click", "last_clicked_node");
+    const onNodeMouseEnter = eventFactory("node_mouse_enter", "last_hovered_node");
+    const onEdgeClick = eventFactory("edge_click", "last_clicked_edge");
+    const onEdgeMouseEnter = eventFactory("edge_mouse_enter", "last_hovered_edge");
 
     root.render(
-      React.createElement("div", {
-        style: { position: "relative", height, width }
-      },
-        React.createElement(ReactFlow, {
-          nodes: nodes,
-          edges: edges,
-          onNodeClick: onNodeClick,
-          ...rfProps
-        }, [
-          React.createElement(Background, { key: "bg" }),
-          React.createElement(Controls, { key: "controls" })
-        ])
+      React.createElement(
+        "div",
+        {
+          style: { position: "relative", height, width },
+        },
+        React.createElement(
+          ReactFlow,
+          {
+            nodes: nodes,
+            edges: edges,
+            onNodeClick: onNodeClick,
+            onNodeMouseEnter: onNodeMouseEnter,
+            onEdgeClick: onEdgeClick,
+            onEdgeMouseEnter: onEdgeMouseEnter,
+            ...rfProps,
+          },
+          [
+            React.createElement(Background, { key: "bg" }),
+            React.createElement(Controls, { key: "controls" }),
+          ]
+        )
       )
     );
   }
