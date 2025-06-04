@@ -5,44 +5,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-# Map Python snake_case names to React camelCase
-_RF_NAME_MAPPING = {
-    "fit_view": "fitView",
-    "fit_view_options": "fitViewOptions",
-    "node_origin": "nodeOrigin",
-    "min_zoom": "minZoom",
-    "max_zoom": "maxZoom",
-    "zoom_on_scroll": "zoomOnScroll",
-    "zoom_on_pinch": "zoomOnPinch",
-    "zoom_on_double_click": "zoomOnDoubleClick",
-    "pan_on_scroll": "panOnScroll",
-    "pan_on_scroll_speed": "panOnScrollSpeed",
-    "pan_on_drag": "panOnDrag",
-    "prevent_scrolling": "preventScrolling",
-    "snap_to_grid": "snapToGrid",
-    "snap_grid": "snapGrid",
-    "elements_selectable": "elementsSelectable",
-    "nodes_draggable": "nodesDraggable",
-    "nodes_connectable": "nodesConnectable",
-    "nodes_focusable": "nodesFocusable",
-    "edges_focusable": "edgesFocusable",
-    "edges_reconnectable": "edgesReconnectable",
-    "select_nodes_on_drag": "selectNodesOnDrag",
-    "selection_on_drag": "selectionOnDrag",
-    "multi_selection_key_code": "multiSelectionKeyCode",
-    "default_edge_options": "defaultEdgeOptions",
-    "connection_line_type": "connectionLineType",
-    "connection_line_style": "connectionLineStyle",
-    "default_marker_color": "defaultMarkerColor",
-    "color_mode": "colorMode",
-    "only_render_visible_elements": "onlyRenderVisibleElements",
-    "elevate_nodes_on_select": "elevateNodesOnSelect",
-    "elevate_edges_on_select": "elevateEdgesOnSelect",
-    "disable_keyboard_a11y": "disableKeyboardA11y",
-    "pro_options": "proOptions",
-    "attribution_position": "attributionPosition",
-}
-
 AttributionPosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 PositionLiteral = Literal["left", "right", "top", "bottom"]
 ExtentLiteral = Literal["parent"]
@@ -114,17 +76,21 @@ class Props:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to xyflow props dict, filtering out None values."""
-        props = {}
-        for python_name, value in asdict(self).items():
-            if value is not None and python_name != "extra_props":
-                react_name = _RF_NAME_MAPPING.get(python_name, python_name)
-                props[react_name] = value
-
-        # Add extra props
+        props = _dataclass_to_dict(self, exclude=("extra_props",))
         if self.extra_props:
             props.update(self.extra_props)
 
         return props
+
+
+def _dataclass_to_dict(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
+    """Convert a dataclass to a dictionary."""
+    dct = {}
+    for python_name, value in asdict(obj).items():
+        if value is not None and python_name not in exclude:
+            react_name = _snake_case_to_camel_case(python_name)
+            dct[react_name] = value
+    return dct
 
 
 @dataclass
@@ -179,63 +145,12 @@ class Node:
     # Any extra/unknown props
     extra: dict[str, Any] = field(default_factory=dict)
 
-    # Serialisation helpers
+    # Serialization helpers
     def to_dict(self) -> dict[str, Any]:
         """Convert Node to dictionary format for xyflow."""
-        node: dict[str, Any] = {
-            "id": self.id,
-            "position": (
-                {"x": self.position[0], "y": self.position[1]}
-                if isinstance(self.position, tuple)
-                else self.position
-            ),
-            "data": self.data,
-        }
-        # Automatically include optional fields if not None
-        optional_fields = (
-            "type",
-            "source_position",
-            "target_position",
-            "hidden",
-            "selected",
-            "dragging",
-            "draggable",
-            "selectable",
-            "connectable",
-            "deletable",
-            "drag_handle",
-            "width",
-            "height",
-            "initial_width",
-            "initial_height",
-            "parent_id",
-            "z_index",
-            "extent",
-            "expand_parent",
-            "aria_label",
-            "origin",
-            "handles",
-            "aria_role_description",
-        )
-        for field_name in optional_fields:
-            value = getattr(self, field_name)
-            if value is not None:
-                # Convert field names to xyflow camelCase where required
-                camel_map = {
-                    "source_position": "sourcePosition",
-                    "target_position": "targetPosition",
-                    "drag_handle": "dragHandle",
-                    "initial_width": "initialWidth",
-                    "initial_height": "initialHeight",
-                    "parent_id": "parentId",
-                    "z_index": "zIndex",
-                    "expand_parent": "expandParent",
-                    "aria_label": "ariaLabel",
-                    "aria_role_description": "ariaRoleDescription",
-                }
-                react_key = camel_map.get(field_name, field_name)
-                node[react_key] = value
-        # Merge extra
+        node = _dataclass_to_dict(self, exclude=("extra",))
+        if isinstance(self.position, tuple):
+            node["position"] = {"x": self.position[0], "y": self.position[1]}
         node.update(self.extra)
         return node
 
@@ -272,30 +187,24 @@ class Edge:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Edge to dictionary format for xyflow."""
-        edge: dict[str, Any] = {
-            "id": self.id,
-            "source": self.source,
-            "target": self.target,
-        }
-        optional_map = {
-            "type": "type",
-            "animated": "animated",
-            "label": "label",
-            "style": "style",
-            "class_name": "className",
-            "reconnectable": "reconnectable",
-            "focusable": "focusable",
-            "aria_role": "ariaRole",
-            "marker_start": "markerStart",
-            "marker_end": "markerEnd",
-            "path_options": "pathOptions",
-            "interaction_width": "interactionWidth",
-            "data": "data",
-        }
-        for attr, key in optional_map.items():
-            value = getattr(self, attr)
-            if value is not None and (attr != "data" or value):
-                edge[key] = value
-        # Merge extra
+        edge = _dataclass_to_dict(self, exclude=("extra", "data"))
         edge.update(self.extra)
+        if self.data:
+            edge["data"] = self.data
         return edge
+
+
+def _snake_case_to_camel_case(name: str) -> str:
+    """Convert a snake_case string to camelCase."""
+    new = []
+    capitalize = False
+    for i, c in enumerate(name):
+        if i == 0:
+            new.append(c)
+        elif c == "_":
+            capitalize = True
+            continue
+        else:
+            new.append(c.upper() if capitalize else c)
+            capitalize = False
+    return "".join(new)
