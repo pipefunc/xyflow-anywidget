@@ -115,31 +115,26 @@ class Node:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Node to dictionary format for xyflow."""
-        # Use a temporary dict to allow modification before camelCasing keys
-        temp_dict = asdict(self)
+        node_dict = _dataclass_to_dict(self, exclude=("extra", "position", "handles"))
 
         # Handle position conversion
         if isinstance(self.position, tuple):
-            temp_dict["position"] = {"x": self.position[0], "y": self.position[1]}
+            node_dict["position"] = {"x": self.position[0], "y": self.position[1]}
         else:  # it's already a dict
-            temp_dict["position"] = self.position
+            node_dict["position"] = self.position
 
         # Convert XYHandle list to list of dicts if present
         if self.handles is not None:
-            temp_dict["handles"] = [asdict(h) for h in self.handles]
-
-        # Use _dataclass_to_dict_manual for controlled conversion and camelCasing
-        node_dict = {}
-        for python_name, value in temp_dict.items():
-            if python_name == "extra":
-                continue  # Skip extra for now, will be added later
-            if value is not None:
-                react_name = _snake_case_to_camel_case(python_name)
-                node_dict[react_name] = value
+            node_dict["handles"] = [asdict(h) for h in self.handles]
 
         if self.extra:
             node_dict.update(self.extra)
         return node_dict
+
+    @classmethod
+    def from_dict(cls, dct: dict[str, Any]) -> Node:
+        """Convert a dictionary to a Node object."""
+        return cls(**{_camel_case_to_snake_case(k): v for k, v in dct.items()})
 
 
 @dataclass
@@ -202,6 +197,11 @@ class Edge:
         if self.extra:
             edge.update(self.extra)
         return edge
+
+    @classmethod
+    def from_dict(cls, dct: dict[str, Any]) -> Edge:
+        """Convert a dictionary to a Edge object."""
+        return cls(**{_camel_case_to_snake_case(k): v for k, v in dct.items()})
 
 
 @dataclass
@@ -308,6 +308,11 @@ class Props:
             props.update(self.extra_props)
 
         return props
+
+    @classmethod
+    def from_dict(cls, dct: dict[str, Any]) -> Props:
+        """Convert a dictionary to a Props object."""
+        return cls(**{_camel_case_to_snake_case(k): v for k, v in dct.items()})
 
 
 def _dataclass_to_dict(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
