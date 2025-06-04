@@ -160,9 +160,12 @@ class Edge:
 
     # Visuals & behaviour
     animated: bool | None = None
+    hidden: bool | None = None
     selected: bool | None = None
     deletable: bool | None = None
+    selectable: bool | None = None
     focusable: bool | None = None
+    z_index: int | None = None
     label: str | None = None  # For simple text labels; ReactNode in TS is more general
     label_style: dict[str, Any] | None = None  # CSSProperties
     label_show_bg: bool | None = None
@@ -184,6 +187,7 @@ class Edge:
     reconnectable: bool | HandleTypeLiteral | None = None
 
     # Accessibility
+    aria_label: str | None = None  # Distinct from aria_role
     aria_role: str | None = None  # Default: "group"
 
     # Any extra/unknown props (kept as an escape hatch)
@@ -332,4 +336,17 @@ def _snake_case_to_camel_case(name: str) -> str:
         else:
             new.append(c.upper() if capitalize else c)
             capitalize = False
+    return "".join(new)
+
+
+def _camel_case_to_snake_case(name: str) -> str:
+    new = []
+    for i, c in enumerate(name):
+        if i == 0:
+            new.append(c)
+        elif c.isupper():
+            new.append("_")
+            new.append(c.lower())
+        else:
+            new.append(c)
     return "".join(new)
