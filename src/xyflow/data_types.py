@@ -153,7 +153,7 @@ class Edge:
     # Data
     data: dict[str, Any] = field(default_factory=dict)
 
-    # Visuals & behaviour
+    # Visuals & behavior
     animated: bool | None = None
     hidden: bool | None = None
     selected: bool | None = None

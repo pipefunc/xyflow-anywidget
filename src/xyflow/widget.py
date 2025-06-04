@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING
 
 import anywidget
 import traitlets
 
-if TYPE_CHECKING:
-    from xyflow import Edge, Node, Props
+from xyflow import Edge, Node, Props
 
 # Default nodes and edges for demo purposes
 _default_nodes = [
@@ -54,3 +52,18 @@ class XYFlowWidget(anywidget.AnyWidget):
         _edges: list[dict] = [] if edges is None else [e.to_dict() for e in edges]
         _props: dict = {} if props is None else props.to_dict()
         return XYFlowWidget(nodes=_nodes, edges=_edges, props=_props)
+
+    @property
+    def node_data(self) -> list[Node]:
+        """Get the node data."""
+        return [Node.from_dict(n) for n in self.nodes]
+
+    @property
+    def edge_data(self) -> list[Edge]:
+        """Get the edge data."""
+        return [Edge.from_dict(e) for e in self.edges]
+
+    @property
+    def props_data(self) -> Props:
+        """Get the props data."""
+        return Props.from_dict(self.props)
