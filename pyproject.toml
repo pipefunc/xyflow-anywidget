@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xyflow"
+description = "Anywidget for XYFlow / React Flow."
+requires-python = ">=3.11"
+dynamic = ["version"]
+maintainers = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
+license = { text = "MIT" }
+dependencies = ["anywidget"]
+keywords = [
+    "jupyter",
+    "widget",
+    "visualization",
+    "xyflow",
+    "graph",
+    "network",
+    "interactive",
+]
+
+[project.readme]
+content-type = "text/markdown"
+file = "README.md"
+
+[project.urls]
+homepage = "https://github.com/pipefunc/graphviz-anywidget"
+documentation = "https://github.com/pipefunc/graphviz-anywidget"
+repository = "https://github.com/pipefunc/graphviz-anywidget"
+
+[dependency-groups]
+dev = [
+    "networkx>=3.5",
+    "notebook>=7.4.3",
+    "pytest>=8.4.0",
+    "scipy>=1.15.3",
+    "watchfiles>=1.0.5",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build]
+only-packages = true
+artifacts = ["src/xyflow/static/*"]
+
+[tool.hatch.build.hooks.jupyter-builder]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = ["src/xyflow/static/widget.js"]
+skip-if-exists = ["src/xyflow/static/widget.js"]
+dependencies = ["hatch-jupyter-builder>=0.5.0"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+npm = "npm"
+build_cmd = "build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "T20",     # flake8-print
+    "ANN101",  # Missing type annotation for {name} in method
+    "S101",    # Use of assert detected
+    "S603",    # S603 `subprocess` call: check for execution of untrusted input
+    "PD901",   # df is a bad variable name. Be kinder to your future self.
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in {name}
+    "D402",    # First line should not be the function's signature
+    "PLW0603", # Using the global statement to update `X` is discouraged
+    "D401",    # First line of docstring should be in imperative mood
+    "SLF001",  # Private member accessed
+    "PLR0913", # Too many arguments in function definition
+    "TD002",   # Missing author in TODO
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "E501",    # Line too long
+    "TRY300",
+    "TRY301",  # Abstract `raise` to an inner function
+    "G004",    # Logging statement uses f-string
+    "TRY401",  # Redundant exception object included in `logging.exception` call
+    "N806",    # Variable `X` in function should be lowercase
+    "N803",    # Argument name `X` should be lowercase
+    "BLE001",  # Do not catch blind exception: `Exception`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001", "D103", "E501", "PLR2004", "S101", "ANN201"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.mypy]
+python_version = "3.11"
