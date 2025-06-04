@@ -17,6 +17,20 @@ function render({ model, el }) {
     const height = model.get("height") || "400px";
     const width = model.get("width") || "100%";
 
+    // Handle node click events
+    const onNodeClick = (event, node) => {
+      // Send the clicked node data back to Python
+      model.set("last_clicked_node", {
+        id: node.id,
+        data: node.data,
+        position: node.position,
+        timestamp: Date.now(),
+        event_type: "node_click"
+      });
+      model.save_changes();
+    };
+
+
     root.render(
       React.createElement("div", {
         style: { position: "relative", height, width }
@@ -24,6 +38,7 @@ function render({ model, el }) {
         React.createElement(ReactFlow, {
           nodes: nodes,
           edges: edges,
+          onNodeClick: onNodeClick,
           ...rfProps
         }, [
           React.createElement(Background, { key: "bg" }),

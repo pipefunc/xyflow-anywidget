@@ -36,6 +36,8 @@ class XYFlowWidget(anywidget.AnyWidget):
     # Retain the old `value` attribute for backward-compatibility.
     value = traitlets.Int(0).tag(sync=True)
 
+    last_clicked_node = traitlets.Dict({}).tag(sync=True)
+
     @classmethod
     def from_data(
         cls,
