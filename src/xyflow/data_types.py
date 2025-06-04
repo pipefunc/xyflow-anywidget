@@ -44,6 +44,11 @@ _RF_NAME_MAPPING = {
 }
 
 AttributionPosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
+PositionLiteral = Literal["left", "right", "top", "bottom"]
+ExtentLiteral = Literal["parent"]
+NodeOrigin = tuple[float, float]  # e.g. (0, 0) top-left, (0.5, 0.5) centre
+CoordinateExtent = tuple[tuple[float, float], tuple[float, float]]
+ExtentType = ExtentLiteral | CoordinateExtent
 
 
 @dataclass
@@ -87,9 +92,7 @@ class Props:
 
     # Edges
     default_edge_options: dict[str, Any] | None = None
-    connection_line_type: Literal["default", "straight", "step", "smoothstep", "bezier"] | None = (
-        None
-    )
+    connection_line_type: EdgeTypeLiteral | None = None
     connection_line_style: dict[str, Any] | None = None
 
     # Visual
@@ -124,16 +127,6 @@ class Props:
         return props
 
 
-# -----------------------------------------------------------------------------
-# Low-level helper type aliases
-# -----------------------------------------------------------------------------
-PositionLiteral = Literal["left", "right", "top", "bottom"]
-ExtentLiteral = Literal["parent"]
-NodeOrigin = tuple[float, float]  # e.g. (0, 0) top-left, (0.5, 0.5) centre
-CoordinateExtent = tuple[tuple[float, float], tuple[float, float]]
-ExtentType = ExtentLiteral | CoordinateExtent
-
-
 @dataclass
 class Node:
     """Python analogue of xyflow's Node type.
@@ -144,7 +137,7 @@ class Node:
     *extra*.
     """
 
-    # Core required properties -------------------------------------------------
+    # Core required properties
     id: str
     position: dict[str, float] | tuple[float, float]
     data: dict[str, Any] = field(default_factory=dict)
@@ -153,7 +146,7 @@ class Node:
     source_position: PositionLiteral | None = None
     target_position: PositionLiteral | None = None
 
-    # Visibility & interaction flags ------------------------------------------
+    # Visibility & interaction flags
     hidden: bool | None = None
     selected: bool | None = None
     dragging: bool | None = None
@@ -162,7 +155,7 @@ class Node:
     connectable: bool | None = None
     deletable: bool | None = None
 
-    # Misc UI options ----------------------------------------------------------
+    # Misc UI options
     drag_handle: str | None = None
     width: float | None = None
     height: float | None = None
@@ -177,18 +170,16 @@ class Node:
     handles: list[dict[str, Any]] | None = None
     aria_role_description: str | None = None
 
-    # xyflow uses *type* to choose custom node components ------------------
+    # xyflow uses *type* to choose custom node components
     type: str | None = None
 
-    # Measured (output-only, ignored when serialising Python→JS) ---------------
+    # Measured (output-only, ignored when serialising Python→JS)
     measured: dict[str, Any] | None = None
 
-    # Any extra/unknown props --------------------------------------------------
+    # Any extra/unknown props
     extra: dict[str, Any] = field(default_factory=dict)
 
-    # ---------------------------------------------------------------------
     # Serialisation helpers
-    # ---------------------------------------------------------------------
     def to_dict(self) -> dict[str, Any]:
         """Convert Node to dictionary format for xyflow."""
         node: dict[str, Any] = {
@@ -260,7 +251,7 @@ class Edge:
     source: str
     target: str
 
-    # Visuals & behaviour ------------------------------------------------------
+    # Visuals & behaviour
     type: EdgeTypeLiteral | str | None = None
     animated: bool | None = None
     label: str | None = None
@@ -274,7 +265,7 @@ class Edge:
     path_options: dict[str, Any] | None = None
     interaction_width: float | None = None
 
-    # Custom data --------------------------------------------------------------
+    # Custom data
     data: dict[str, Any] = field(default_factory=dict)
 
     extra: dict[str, Any] = field(default_factory=dict)
