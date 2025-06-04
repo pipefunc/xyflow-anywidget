@@ -11,6 +11,7 @@ ExtentLiteral = Literal["parent"]
 NodeOrigin = tuple[float, float]  # e.g. (0, 0) top-left, (0.5, 0.5) centre
 CoordinateExtent = tuple[tuple[float, float], tuple[float, float]]
 ExtentType = ExtentLiteral | CoordinateExtent
+NodeType = Literal["default", "input", "output", "group"]
 
 
 @dataclass
@@ -137,9 +138,9 @@ class Node:
     aria_role_description: str | None = None
 
     # xyflow uses *type* to choose custom node components
-    type: str | None = None
+    type: NodeType | None = None
 
-    # Measured (output-only, ignored when serialising Python→JS)
+    # Measured (output-only, ignored when serializing Python→JS)
     measured: dict[str, Any] | None = None
 
     # Any extra/unknown props
