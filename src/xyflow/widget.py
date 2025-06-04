@@ -24,8 +24,8 @@ class XYFlowWidget(anywidget.AnyWidget):
     _css = pathlib.Path(__file__).parent / "static" / "widget.css"
 
     # Graph structure sent to the JavaScript side
-    nodes = traitlets.List(default_value=_default_nodes).tag(sync=True)
-    edges = traitlets.List(default_value=_default_edges).tag(sync=True)
+    nodes = traitlets.List(traitlets.Dict(), default_value=_default_nodes.copy()).tag(sync=True)
+    edges = traitlets.List(traitlets.Dict(), default_value=_default_edges.copy()).tag(sync=True)
 
     # xyflow configuration (from Props.to_dict())
     props = traitlets.Dict({}).tag(sync=True)
