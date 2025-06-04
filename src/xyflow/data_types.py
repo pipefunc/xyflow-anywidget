@@ -3,15 +3,201 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 AttributionPosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 PositionLiteral = Literal["left", "right", "top", "bottom"]
 ExtentLiteral = Literal["parent"]
-NodeOrigin = tuple[float, float]  # e.g. (0, 0) top-left, (0.5, 0.5) centre
+EdgeTypeLiteral = Literal["default", "straight", "step", "smoothstep", "bezier"]
+HandleTypeLiteral = Literal["source", "target"]
+ConnectionModeLiteral = Literal["strict", "loose"]
+SelectionModeLiteral = Literal["full", "partial"]
+PanOnScrollModeLiteral = Literal["free", "vertical", "horizontal"]
+MouseButtonLiteral = Literal[0, 1, 2]  # For panOnDrag mouse buttons
+KeyCode = str | list[str]  # For key code props
+NodeOrigin = tuple[float, float]
 CoordinateExtent = tuple[tuple[float, float], tuple[float, float]]
 ExtentType = ExtentLiteral | CoordinateExtent
-NodeType = Literal["default", "input", "output", "group"]
+NodeTypeLiteral = Literal["default", "input", "output", "group"]
+
+
+class ViewportDict(TypedDict):
+    """Viewport dictionary."""
+
+    x: float
+    y: float
+    zoom: float
+
+
+class FitViewOptionsDict(TypedDict, total=False):
+    """Options for the fitView method."""
+
+    padding: float
+    includeHiddenNodes: bool
+    minZoom: float
+    maxZoom: float
+    duration: float
+    nodes: list[str | dict[str, str]]  # List of node IDs or objects like {'id': 'node_id'}
+
+
+class MeasuredDimensions(TypedDict, total=False):
+    """Measured dimensions of a node."""
+
+    width: float
+    height: float
+
+
+@dataclass
+class XYHandle:
+    """Represents a handle on a node."""
+
+    id: str | None = None
+    position: PositionLiteral | None = None
+    type: HandleTypeLiteral | None = None
+    style: dict[str, Any] | None = None
+    is_connectable: bool | int | None = None  # bool, or number for max connections
+
+
+@dataclass
+class Node:
+    """Python analogue of xyflow's Node type.
+
+    The field list follows the upstream NodeBase definition. Only *id* and
+    *position* are mandatory - everything else is optional so you can specify
+    as much or as little as you need.
+    """
+
+    # Core required properties
+    id: str
+    # position: dict[str, float] or tuple[float, float] accepted, converted to dict in to_dict
+    position: dict[str, float] | tuple[float, float]
+    data: dict[str, Any] = field(default_factory=dict)
+
+    # Type
+    # Allows common literal types or any string for custom types
+    type: NodeTypeLiteral | str | None = None
+
+    # Connection positions
+    source_position: PositionLiteral | None = None
+    target_position: PositionLiteral | None = None
+
+    # Visibility & interaction flags
+    hidden: bool | None = None
+    selected: bool | None = None
+    dragging: bool | None = None  # Typically read-only from frontend state
+    draggable: bool | None = None
+    selectable: bool | None = None
+    connectable: bool | None = None
+    deletable: bool | None = None
+
+    # UI options
+    drag_handle: str | None = None  # CSS selector for drag handle
+    width: float | None = None
+    height: float | None = None
+    initial_width: float | None = None
+    initial_height: float | None = None
+    parent_id: str | None = None
+    z_index: int | None = None
+    extent: ExtentType | None = None
+    expand_parent: bool | None = None  # If true, parent expands when node is dragged to its border
+    origin: NodeOrigin | None = None  # [0,0] top-left, [0.5,0.5] center
+    handles: list[XYHandle] | None = None  # List of handle objects
+
+    # Accessibility
+    aria_label: str | None = None
+    aria_role_description: str | None = None  # Default: "node"
+
+    # Measured dimensions (typically read-only from frontend)
+    measured: MeasuredDimensions | None = None
+
+    # Any extra/unknown props (kept as an escape hatch, though minimized)
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert Node to dictionary format for xyflow."""
+        # Use a temporary dict to allow modification before camelCasing keys
+        temp_dict = asdict(self)
+
+        # Handle position conversion
+        if isinstance(self.position, tuple):
+            temp_dict["position"] = {"x": self.position[0], "y": self.position[1]}
+        else:  # it's already a dict
+            temp_dict["position"] = self.position
+
+        # Convert XYHandle list to list of dicts if present
+        if self.handles is not None:
+            temp_dict["handles"] = [asdict(h) for h in self.handles]
+
+        # Use _dataclass_to_dict_manual for controlled conversion and camelCasing
+        node_dict = {}
+        for python_name, value in temp_dict.items():
+            if python_name == "extra":
+                continue  # Skip extra for now, will be added later
+            if value is not None:
+                react_name = _snake_case_to_camel_case(python_name)
+                node_dict[react_name] = value
+
+        if self.extra:
+            node_dict.update(self.extra)
+        return node_dict
+
+
+@dataclass
+class Edge:
+    """Python analogue of xyflow Edge type."""
+
+    # Core required properties
+    id: str
+    source: str  # Source node ID
+    target: str  # Target node ID
+
+    # Type
+    # Allows common literal types or any string for custom types
+    type: EdgeTypeLiteral | str | None = None
+
+    # Data
+    data: dict[str, Any] = field(default_factory=dict)
+
+    # Visuals & behaviour
+    animated: bool | None = None
+    selected: bool | None = None
+    deletable: bool | None = None
+    focusable: bool | None = None
+    label: str | None = None  # For simple text labels; ReactNode in TS is more general
+    label_style: dict[str, Any] | None = None  # CSSProperties
+    label_show_bg: bool | None = None
+    label_bg_style: dict[str, Any] | None = None  # CSSProperties
+    label_bg_padding: tuple[int, int] | None = None  # [paddingX, paddingY]
+    label_bg_border_radius: int | None = None
+    style: dict[str, Any] | None = None  # CSSProperties for the edge path
+    class_name: str | None = None
+    marker_start: str | None = None  # ID of an SVG marker
+    marker_end: str | None = None  # ID of an SVG marker
+    path_options: dict[str, Any] | None = (
+        None  # Options for specific path types (bezier, smoothstep, step)
+    )
+    interaction_width: float | None = None  # Invisible width for interaction
+
+    # Connection details
+    source_handle_id: str | None = None
+    target_handle_id: str | None = None
+    reconnectable: bool | HandleTypeLiteral | None = None
+
+    # Accessibility
+    aria_role: str | None = None  # Default: "group"
+
+    # Any extra/unknown props (kept as an escape hatch)
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert Edge to dictionary format for xyflow."""
+        # All standard fields (including 'data') will be handled by _dataclass_to_dict
+        edge = _dataclass_to_dict(self, exclude=("extra", "data"))
+        if self.data:
+            edge["data"] = self.data
+        if self.extra:
+            edge.update(self.extra)
+        return edge
 
 
 @dataclass
@@ -22,180 +208,119 @@ class Props:
     options not covered here, use the `extra_props` dict or widget.props.
     """
 
-    # Layout & Positioning
+    # Layout & View
     fit_view: bool | None = None
-    fit_view_options: dict[str, Any] | None = None
-    node_origin: tuple | None = None
+    fit_view_options: FitViewOptionsDict | None = None
+    node_origin: NodeOrigin | None = None  # Default: [0, 0] (top-left)
+    node_extent: CoordinateExtent | None = None  # Constrains node movement [[x1, y1], [x2, y2]]
+    translate_extent: CoordinateExtent | None = None  # Constrains viewport panning
+    default_viewport: ViewportDict | None = None  # Initial viewport {x, y, zoom}
+    viewport: ViewportDict | None = None  # Controlled viewport
 
     # Zoom & Pan
-    min_zoom: float | None = None
-    max_zoom: float | None = None
-    zoom_on_scroll: bool | None = None
-    zoom_on_pinch: bool | None = None
-    zoom_on_double_click: bool | None = None
-    pan_on_scroll: bool | None = None
-    pan_on_scroll_speed: float | None = None
-    pan_on_drag: bool | None = None
-    prevent_scrolling: bool | None = None
+    min_zoom: float | None = None  # Default: 0.5
+    max_zoom: float | None = None  # Default: 2
+    zoom_on_scroll: bool | None = None  # Default: true
+    zoom_on_pinch: bool | None = None  # Default: true
+    zoom_on_double_click: bool | None = None  # Default: true
+    pan_on_scroll: bool | None = None  # Default: false
+    pan_on_scroll_speed: float | None = None  # Default: 0.5
+    pan_on_scroll_mode: PanOnScrollModeLiteral | None = None  # Default: 'free'
+    pan_on_drag: bool | list[MouseButtonLiteral] | None = (
+        None  # Default: true (left mouse button), or list of 0,1,2
+    )
+    prevent_scrolling: bool | None = (
+        None  # Default: true (prevents page scroll when mouse over pane)
+    )
+    zoom_activation_key_code: KeyCode | None = None  # Default: OS-specific (Meta/Control)
+    pan_activation_key_code: KeyCode | None = None  # Default: 'Space'
 
     # Grid & Snapping
-    snap_to_grid: bool | None = None
-    snap_grid: tuple | None = None  # (x, y) spacing
+    snap_to_grid: bool | None = None  # Default: false
+    snap_grid: tuple[int, int] | None = None  # Default: [15, 15] (x, y) spacing
 
     # Selection & Interaction
-    elements_selectable: bool | None = None
-    nodes_draggable: bool | None = None
-    nodes_connectable: bool | None = None
-    nodes_focusable: bool | None = None
-    edges_focusable: bool | None = None
-    edges_reconnectable: bool | None = None
-    select_nodes_on_drag: bool | None = None
-    selection_on_drag: bool | None = None
-    multi_selection_key_code: str | None = None
+    elements_selectable: bool | None = None  # Default: true
+    nodes_draggable: bool | None = None  # Default: true
+    nodes_connectable: bool | None = None  # Default: true
+    nodes_focusable: bool | None = None  # Default: true
+    edges_focusable: bool | None = None  # Default: true
+    edges_reconnectable: bool | HandleTypeLiteral | None = None  # Default: false
+    select_nodes_on_drag: bool | None = None  # Default: true (if selectionOnDrag=true)
+    selection_on_drag: bool | None = None  # Default: false
+    selection_mode: SelectionModeLiteral | None = None  # Default: 'full'
+    selection_key_code: KeyCode | None = None  # Default: 'Shift'
+    multi_selection_key_code: KeyCode | None = None  # Default: OS-specific (Meta/Control)
+    connect_on_click: bool | None = None  # Default: true
 
     # Edges
-    default_edge_options: dict[str, Any] | None = None
-    connection_line_type: EdgeTypeLiteral | None = None
-    connection_line_style: dict[str, Any] | None = None
+    default_edge_options: dict[str, Any] | None = None  # Default options for new edges
+    connection_line_type: EdgeTypeLiteral | None = None  # Default: 'bezier'
+    connection_line_style: dict[str, Any] | None = None  # CSSProperties
+    connection_mode: ConnectionModeLiteral | None = None  # Default: 'loose'
+    connection_radius: float | None = None  # Default: 20
 
-    # Visual
-    default_marker_color: str | None = None
-    color_mode: Literal["light", "dark"] | None = None
-    only_render_visible_elements: bool | None = None
-    elevate_nodes_on_select: bool | None = None
-    elevate_edges_on_select: bool | None = None
+    # Nodes
+    node_drag_threshold: int | None = None  # Default: 0
 
-    # Accessibility
-    disable_keyboard_a11y: bool | None = None
+    # Rendering & Style
+    default_marker_color: str | None = None  # Default: '#b1b1b7'
+    color_mode: Literal["light", "dark"] | None = None  # Default: 'light'
+    only_render_visible_elements: bool | None = None  # Default: false
+    elevate_nodes_on_select: bool | None = None  # Default: true
+    elevate_edges_on_select: bool | None = None  # Default: true
+    style: dict[str, Any] | None = None  # CSSProperties for the main wrapper
+    class_name: str | None = None  # Custom class for the main wrapper
 
-    # Pro Features
+    # Behavior
+    delete_key_code: KeyCode | None = None  # Default: 'Backspace'
+    auto_pan_on_connect: bool | None = None  # Default: true
+    auto_pan_on_node_drag: bool | None = None  # Default: true
+    auto_pan_speed: float | None = None  # Default: 10
+
+    # Accessibility & Misc
+    disable_keyboard_a11y: bool | None = None  # Default: false
+    id: str | None = None  # React Flow instance ID
+    no_drag_class_name: str | None = None  # Default: 'nodrag'
+    no_wheel_class_name: str | None = None  # Default: 'nowheel'
+    no_pan_class_name: str | None = None  # Default: 'nopan'
+    pane_click_distance: int | None = None  # Default: 0
+    node_click_distance: int | None = None  # Default: 0
+    reconnect_radius: float | None = None  # Default: 10
+    debug: bool | None = None  # For internal debugging
+
+    # Pro Features (Placeholder, specific options would go into pro_options dict)
     pro_options: dict[str, Any] | None = None
-    attribution_position: AttributionPosition | None = None
+    attribution_position: AttributionPosition | None = None  # Default: 'bottom-right'
 
-    # Advanced/Escape Hatch
+    # Escape Hatch (for (accidentally) unmapped props)
     extra_props: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to xyflow props dict, filtering out None values."""
         props = _dataclass_to_dict(self, exclude=("extra_props",))
         if self.extra_props:
+            # extra_props are assumed to be already camelCased if needed
             props.update(self.extra_props)
 
         return props
 
 
 def _dataclass_to_dict(obj: Any, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
-    """Convert a dataclass to a dictionary."""
+    """Convert a dataclass to a dictionary, handling nested structures and None values."""
     dct = {}
-    for python_name, value in asdict(obj).items():
-        if value is not None and python_name not in exclude:
+    temp_obj_dict = asdict(obj)
+
+    for python_name, value in temp_obj_dict.items():
+        if python_name in exclude:
+            continue
+        if value is not None:
             react_name = _snake_case_to_camel_case(python_name)
             dct[react_name] = value
     return dct
 
 
-@dataclass
-class Node:
-    """Python analogue of xyflow's Node type.
-
-    The field list follows the upstream NodeBase definition. Only *id* and
-    *position* are mandatory - everything else is optional so you can specify
-    as much or as little as you need. Any not-yet-supported props can go into
-    *extra*.
-    """
-
-    # Core required properties
-    id: str
-    position: dict[str, float] | tuple[float, float]
-    data: dict[str, Any] = field(default_factory=dict)
-
-    # Connection positions (only for default/source/target node types) ---------
-    source_position: PositionLiteral | None = None
-    target_position: PositionLiteral | None = None
-
-    # Visibility & interaction flags
-    hidden: bool | None = None
-    selected: bool | None = None
-    dragging: bool | None = None
-    draggable: bool | None = None
-    selectable: bool | None = None
-    connectable: bool | None = None
-    deletable: bool | None = None
-
-    # Misc UI options
-    drag_handle: str | None = None
-    width: float | None = None
-    height: float | None = None
-    initial_width: float | None = None
-    initial_height: float | None = None
-    parent_id: str | None = None
-    z_index: int | None = None
-    extent: ExtentType | None = None
-    expand_parent: bool | None = None
-    aria_label: str | None = None
-    origin: NodeOrigin | None = None
-    handles: list[dict[str, Any]] | None = None
-    aria_role_description: str | None = None
-
-    # xyflow uses *type* to choose custom node components
-    type: NodeType | None = None
-
-    # Measured (output-only, ignored when serializing Python→JS)
-    measured: dict[str, Any] | None = None
-
-    # Any extra/unknown props
-    extra: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert Node to dictionary format for xyflow."""
-        node = _dataclass_to_dict(self, exclude=("extra",))
-        if isinstance(self.position, tuple):
-            node["position"] = {"x": self.position[0], "y": self.position[1]}
-        node.update(self.extra)
-        return node
-
-
-EdgeTypeLiteral = Literal["default", "straight", "step", "smoothstep", "bezier"]
-
-
-@dataclass
-class Edge:
-    """Python analogue of xyflow Edge type."""
-
-    id: str
-    source: str
-    target: str
-
-    # Visuals & behaviour
-    type: EdgeTypeLiteral | str | None = None
-    animated: bool | None = None
-    label: str | None = None
-    style: dict[str, Any] | None = None
-    class_name: str | None = None
-    reconnectable: bool | Literal["source", "target"] | None = None
-    focusable: bool | None = None
-    aria_role: str | None = None
-    marker_start: str | None = None
-    marker_end: str | None = None
-    path_options: dict[str, Any] | None = None
-    interaction_width: float | None = None
-
-    # Custom data
-    data: dict[str, Any] = field(default_factory=dict)
-
-    extra: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert Edge to dictionary format for xyflow."""
-        edge = _dataclass_to_dict(self, exclude=("extra", "data"))
-        edge.update(self.extra)
-        if self.data:
-            edge["data"] = self.data
-        return edge
-
-
 def _snake_case_to_camel_case(name: str) -> str:
-    """Convert a snake_case string to camelCase."""
     new = []
     capitalize = False
     for i, c in enumerate(name):

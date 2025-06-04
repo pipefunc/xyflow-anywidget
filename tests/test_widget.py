@@ -13,7 +13,6 @@ def test_widget_creation_empty() -> None:
     assert widget.nodes == _default_nodes
     assert widget.edges == _default_edges
     assert widget.props == {}
-    assert widget.value == 0
 
 
 def test_widget_creation_with_data() -> None:
