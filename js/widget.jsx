@@ -51,6 +51,7 @@ function render({ model, el }) {
             onNodeMouseEnter: onNodeMouseEnter,
             onEdgeClick: onEdgeClick,
             onEdgeMouseEnter: onEdgeMouseEnter,
+            onInit: (instance) => rfProps['fitView'] && instance.fitView(),
             ...rfProps,
           },
           [

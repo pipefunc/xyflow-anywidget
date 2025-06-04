@@ -28,13 +28,13 @@ class XYFlowWidget(anywidget.AnyWidget):
     # Graph structure sent to the JavaScript side
     nodes = traitlets.List(default_value=_default_nodes).tag(sync=True)
     edges = traitlets.List(default_value=_default_edges).tag(sync=True)
+
     # xyflow configuration (from Props.to_dict())
     props = traitlets.Dict({}).tag(sync=True)
+
     # Widget dimensions - configurable height and width
     height = traitlets.Unicode(allow_none=True, default_value=None).tag(sync=True)
     width = traitlets.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    # Retain the old `value` attribute for backward-compatibility.
-    value = traitlets.Int(0).tag(sync=True)
 
     # Event data sent to Python
     last_clicked_node = traitlets.Dict({}).tag(sync=True)
