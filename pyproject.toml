@@ -34,6 +34,7 @@ dev = [
     "networkx>=3.5",
     "notebook>=7.4.3",
     "pytest>=8.4.0",
+    "pytest-cov>=6.1.1",
     "scipy>=1.15.3",
     "watchfiles>=1.0.5",
 ]
@@ -94,3 +95,21 @@ max-complexity = 18
 
 [tool.mypy]
 python_version = "3.11"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: marks tests as integration tests that require real API access"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+addopts = [
+    "--cov=xyflow",
+    "--cov-report=term",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--no-cov-on-fail",
+    "-v",
+]
