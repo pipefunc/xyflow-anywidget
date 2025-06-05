@@ -125,7 +125,7 @@ class Node:
 
         # Convert XYHandle list to list of dicts if present
         if self.handles is not None:
-            node_dict["handles"] = [asdict(h) for h in self.handles]
+            node_dict["handles"] = [_dataclass_to_dict(h) for h in self.handles]
 
         if self.extra:
             node_dict.update(self.extra)
