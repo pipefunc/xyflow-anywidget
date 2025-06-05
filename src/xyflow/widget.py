@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+from typing import Any
 
 import anywidget
 import traitlets
@@ -40,6 +41,83 @@ class XYFlowWidget(anywidget.AnyWidget):
     last_clicked_edge = traitlets.Dict({}).tag(sync=True)
     last_hovered_edge = traitlets.Dict({}).tag(sync=True)
 
+    def update_edge(self, index: int, *, edge: Edge | dict | None = None, **update) -> None:
+        """Update an edge at the specified index.
+
+        Either `edge` or `**update` must be provided, but not both.
+
+        Args:
+            index: The index of the edge to update in the edges list.
+            edge: A complete edge object or dict to replace the edge at the given index.
+            **update: Specific edge attributes to update (e.g., animated=True, style={...}).
+
+        Raises:
+            ValueError: If both edge and update kwargs are provided, or if neither is provided.
+            IndexError: If index is out of bounds.
+
+        Examples:
+            Update specific attributes:
+            >>> w.update_edge(0, animated=True, style={"stroke": "red"})
+
+            Replace entire edge:
+            >>> w.update_edge(0, edge=Edge(source="1", target="2", animated=True))
+            >>> w.update_edge(0, edge={"source": "1", "target": "2", "animated": True})
+
+        """
+        if edge is not None and update:
+            msg = "Cannot provide both 'edge' and update kwargs"
+            raise ValueError(msg)
+        if edge is None and not update:
+            msg = "Must provide either 'edge' or update kwargs"
+            raise ValueError(msg)
+
+        # Only way to get traitlets to update is to set the whole list again.
+        if edge is not None:
+            if isinstance(edge, Edge):
+                edge = edge.to_dict()
+            elif isinstance(edge, dict):
+                Edge.from_dict(edge)  # to validate
+        self.edges = _update_index(self.edges, index, edge, update or None)
+
+    def update_node(self, index: int, *, node: Node | dict | None = None, **update) -> None:
+        """Update a node at the specified index.
+
+        Either `node` or `**update` must be provided, but not both.
+
+        Args:
+            index: The index of the node to update in the nodes list.
+            node: A complete node object or dict to replace the node at the given index.
+            **update: Specific node attributes to update (e.g., position={"x": 100, "y": 100},
+                data={"label": "Updated"}).
+
+        Raises:
+            ValueError: If both node and update kwargs are provided, or if neither is provided.
+            IndexError: If index is out of bounds.
+
+        Examples:
+            Update specific attributes:
+            >>> w.update_node(0, position={"x": 100, "y": 100}, data={"label": "Updated"})
+
+            Replace entire node:
+            >>> w.update_node(0, node=Node(id="1", position={"x": 100, "y": 100}))
+            >>> w.update_node(0, node={"id": "1", "position": {"x": 100, "y": 100}})
+
+        """
+        if node is not None and update:
+            msg = "Cannot provide both 'node' and update kwargs"
+            raise ValueError(msg)
+        if node is None and not update:
+            msg = "Must provide either 'node' or update kwargs"
+            raise ValueError(msg)
+
+        # Only way to get traitlets to update is to set the whole list again.
+        if node is not None:
+            if isinstance(node, Node):
+                node = node.to_dict()
+            elif isinstance(node, dict):
+                Node.from_dict(node)  # to validate
+        self.nodes = _update_index(self.nodes, index, node, update or None)
+
     @classmethod
     def from_data(
         cls,
@@ -67,3 +145,24 @@ class XYFlowWidget(anywidget.AnyWidget):
     def props_data(self) -> Props:
         """Get the props data."""
         return Props.from_dict(self.props)
+
+
+def _update_index(
+    lst: list,
+    index: int,
+    value: Any | None = None,
+    update: dict | None = None,
+) -> list:
+    """Update an item in a list by index."""
+    assert value is None or update is None, "Only one of value or update can be provided"
+    new = []
+    for i, v in enumerate(lst):
+        if i != index:
+            new.append(v)
+        elif value is not None:
+            new.append(value)
+        elif update:
+            new.append({**v, **update})
+        else:
+            new.append(v)
+    return new
